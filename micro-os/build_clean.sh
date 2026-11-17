@@ -31,13 +31,21 @@ for pkg in debootstrap squashfs-tools xorriso isolinux syslinux-common; do
 done
 
 echo "================================================================="
-echo "==> [1/7] Preparing workspaces..."
+echo "==> [1/7] Preparing workspaces & releasing background locks..."
 echo "================================================================="
+# Terminate any lingering background apt/dpkg processes
+pkill -9 -f "apt-get" 2>/dev/null || true
+pkill -9 -f "dpkg" 2>/dev/null || true
+sleep 1
+
 for m in dev/pts dev proc sys run; do
     if mountpoint -q "${CHROOT_DIR}/${m}" 2>/dev/null; then
         umount -lf "${CHROOT_DIR}/${m}" || true
     fi
 done
+
+# Remove any stale lock files from previous attempts
+rm -f "${CHROOT_DIR}/var/lib/dpkg/lock"* "${CHROOT_DIR}/var/cache/apt/archives/lock" 2>/dev/null || true
 
 # If chroot base is already valid, preserve it to save download time!
 if [ ! -f "${CHROOT_DIR}/bin/bash" ]; then
@@ -121,10 +129,7 @@ apt-get install -y --fix-missing --no-install-recommends \
     thunar \
     nsnake \
     bsdgames \
-    build-essential || apt-get install -y --fix-missing --no-install-recommends \
-    linux-image-amd64 live-boot systemd-sysv udev dbus sudo curl nano htop python3 \
-    xorg xserver-xorg-video-all lightdm lightdm-autologin-greeter xfce4 xfce4-terminal \
-    xfce4-whiskermenu-plugin thunar nsnake bsdgames build-essential
+    build-essential
 
 # Configure Non-Root User & Sudo (user:user, root:root)
 id -u user &>/dev/null || useradd -m -s /bin/bash -G sudo,audio,video user
