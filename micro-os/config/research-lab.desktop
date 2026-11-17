@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Research Lab Benchmark
+Comment=Workload-Aware CPU Scheduling Benchmark Suite (Yeddula Vyshnavi)
+Exec=xfce4-terminal --title="MicroOS Research Lab - Scheduling Evaluation" --geometry=100x32 -e "/usr/local/bin/research-lab"
+Icon=utilities-system-monitor
+Terminal=false
+StartupNotify=true
+Categories=Development;System;Science;

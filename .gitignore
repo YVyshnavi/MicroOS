@@ -1,0 +1,58 @@
+# ==============================================================================
+# MicroOS & RustOS GitHub Protection .gitignore
+# Strictly excludes all files > 100 MB and temporary build artifacts
+# ==============================================================================
+
+# OS Disk Images & Bootable Media (> 100 MB)
+*.iso
+*.img
+*.vdi
+*.vmdk
+*.hdd
+*.qcow2
+*.raw
+
+# Build Outputs & Temporary Workspaces
+build/
+bin/
+target/
+isodir/
+/var/tmp/micro-os-build/
+chroot/
+
+# Compiled Rust & C Binaries
+*.exe
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.bin
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# VirtualBox Machine Runtime State
+*.vbox
+*.vbox-prev
+*.log
+*.nvram
+
+# Operating System Specific Files
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+# IDE & Editor Directories
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace

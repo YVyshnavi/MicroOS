@@ -1,0 +1,8 @@
+[package]
+name = "research-lab"
+version = "1.0.0"
+edition = "2021"
+authors = ["Yeddula Vyshnavi <25BTRCL294@jainuniversity.ac.in>"]
+description = "Workload-Aware CPU Scheduling Benchmark Suite and Experimental Lab"
+
+[dependencies]

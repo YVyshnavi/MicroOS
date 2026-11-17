@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=2048 Arcade Game
+Comment=Classic 2048 sliding number puzzle game
+Exec=xfce4-terminal --title="2048 Arcade Game" --geometry=80x25 -e "/usr/games/bsdgames-number"
+Icon=applications-games
+Terminal=false
+StartupNotify=true
+Categories=Game;ArcadeGame;
