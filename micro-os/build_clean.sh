@@ -31,34 +31,41 @@ for pkg in debootstrap squashfs-tools xorriso isolinux syslinux-common; do
 done
 
 echo "================================================================="
-echo "==> [1/7] Cleaning previous workspaces..."
+echo "==> [1/7] Preparing workspaces..."
 echo "================================================================="
 for m in dev/pts dev proc sys run; do
     if mountpoint -q "${CHROOT_DIR}/${m}" 2>/dev/null; then
         umount -lf "${CHROOT_DIR}/${m}" || true
     fi
 done
-rm -rf "${BUILD_DIR}"
-mkdir -p "${CHROOT_DIR}" "${LIVE_DIR}/live" "${LIVE_DIR}/isolinux"
 
-echo "================================================================="
-echo "==> [2/7] Bootstrapping Debian 12 Bookworm (minbase amd64)..."
-echo "================================================================="
-debootstrap --variant=minbase --arch=amd64 bookworm "${CHROOT_DIR}" http://deb.debian.org/debian/
+# If chroot base is already valid, preserve it to save download time!
+if [ ! -f "${CHROOT_DIR}/bin/bash" ]; then
+    echo "Creating clean build directory..."
+    rm -rf "${BUILD_DIR}"
+    mkdir -p "${CHROOT_DIR}" "${LIVE_DIR}/live" "${LIVE_DIR}/isolinux"
+    echo "================================================================="
+    echo "==> [2/7] Bootstrapping Debian 12 Bookworm (minbase amd64)..."
+    echo "================================================================="
+    debootstrap --variant=minbase --arch=amd64 bookworm "${CHROOT_DIR}" http://deb.debian.org/debian/
+else
+    echo "Debian base already present. Reusing existing chroot to save time!"
+    mkdir -p "${LIVE_DIR}/live" "${LIVE_DIR}/isolinux"
+fi
 
 echo "================================================================="
 echo "==> [3/7] Mounting kernel filesystems and setting up DNS for chroot..."
 echo "================================================================="
-mount --bind /dev "${CHROOT_DIR}/dev"
-mount --bind /dev/pts "${CHROOT_DIR}/dev/pts"
-mount -t proc proc "${CHROOT_DIR}/proc"
-mount -t sysfs sysfs "${CHROOT_DIR}/sys"
+mkdir -p "${CHROOT_DIR}/dev" "${CHROOT_DIR}/proc" "${CHROOT_DIR}/sys" "${CHROOT_DIR}/etc"
+mountpoint -q "${CHROOT_DIR}/dev" || mount --bind /dev "${CHROOT_DIR}/dev"
+mountpoint -q "${CHROOT_DIR}/dev/pts" || mount --bind /dev/pts "${CHROOT_DIR}/dev/pts"
+mountpoint -q "${CHROOT_DIR}/proc" || mount -t proc proc "${CHROOT_DIR}/proc"
+mountpoint -q "${CHROOT_DIR}/sys" || mount -t sysfs sysfs "${CHROOT_DIR}/sys"
 
-# Setup robust DNS resolution inside chroot
-mkdir -p "${CHROOT_DIR}/etc"
+# Setup high-reliability DNS resolution inside chroot
 cat << 'DNS' > "${CHROOT_DIR}/etc/resolv.conf"
-nameserver 1.1.1.1
 nameserver 8.8.8.8
+nameserver 1.1.1.1
 DNS
 
 echo "================================================================="
@@ -68,8 +75,14 @@ cat << 'EOF' | chroot "${CHROOT_DIR}" /bin/bash
 set -e
 export DEBIAN_FRONTEND=noninteractive
 
-# Ensure archive cache directories exist cleanly
-mkdir -p /var/cache/apt/archives/partial
+# Force IPv4 to prevent WSL DNS timeout issues and increase retries
+mkdir -p /etc/apt/apt.conf.d /var/cache/apt/archives/partial
+cat << 'APTCONF' > /etc/apt/apt.conf.d/99force-ipv4
+Acquire::ForceIPv4 "true";
+Acquire::Retries "10";
+Acquire::http::Timeout "45";
+APTCONF
+
 chmod 1777 /tmp /var/tmp 2>/dev/null || true
 
 # Repositories & Updates
@@ -77,7 +90,6 @@ cat << 'REPO' > /etc/apt/sources.list
 deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
 deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
 REPO
-apt-get clean
 apt-get update
 
 # Core Kernel, Live-Boot & Lightweight Desktop Packages (with retry resilience)
