@@ -47,12 +47,19 @@ echo "================================================================="
 debootstrap --variant=minbase --arch=amd64 bookworm "${CHROOT_DIR}" http://deb.debian.org/debian/
 
 echo "================================================================="
-echo "==> [3/7] Mounting kernel filesystems for chroot environment..."
+echo "==> [3/7] Mounting kernel filesystems and setting up DNS for chroot..."
 echo "================================================================="
 mount --bind /dev "${CHROOT_DIR}/dev"
 mount --bind /dev/pts "${CHROOT_DIR}/dev/pts"
 mount -t proc proc "${CHROOT_DIR}/proc"
 mount -t sysfs sysfs "${CHROOT_DIR}/sys"
+
+# Setup robust DNS resolution inside chroot
+mkdir -p "${CHROOT_DIR}/etc"
+cat << 'DNS' > "${CHROOT_DIR}/etc/resolv.conf"
+nameserver 1.1.1.1
+nameserver 8.8.8.8
+DNS
 
 echo "================================================================="
 echo "==> [4/7] Installing packages and configuring Windows 11-style GUI..."
@@ -61,15 +68,20 @@ cat << 'EOF' | chroot "${CHROOT_DIR}" /bin/bash
 set -e
 export DEBIAN_FRONTEND=noninteractive
 
+# Ensure archive cache directories exist cleanly
+mkdir -p /var/cache/apt/archives/partial
+chmod 1777 /tmp /var/tmp 2>/dev/null || true
+
 # Repositories & Updates
 cat << 'REPO' > /etc/apt/sources.list
 deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
 deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
 REPO
+apt-get clean
 apt-get update
 
-# Core Kernel, Live-Boot & Lightweight Desktop Packages
-apt-get install -y --no-install-recommends \
+# Core Kernel, Live-Boot & Lightweight Desktop Packages (with retry resilience)
+apt-get install -y --fix-missing --no-install-recommends \
     linux-image-amd64 \
     live-boot \
     systemd-sysv \
@@ -90,7 +102,10 @@ apt-get install -y --no-install-recommends \
     thunar \
     nsnake \
     bsdgames \
-    build-essential
+    build-essential || apt-get install -y --fix-missing --no-install-recommends \
+    linux-image-amd64 live-boot systemd-sysv udev dbus sudo curl nano htop python3 \
+    xorg xserver-xorg-video-all lightdm lightdm-autologin-greeter xfce4 xfce4-terminal \
+    xfce4-whiskermenu-plugin thunar nsnake bsdgames build-essential
 
 # Configure Non-Root User & Sudo (user:user, root:root)
 id -u user &>/dev/null || useradd -m -s /bin/bash -G sudo,audio,video user
