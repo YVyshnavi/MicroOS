@@ -144,6 +144,7 @@ chmod 0440 /etc/sudoers.d/user
 
 # Configure Hostname & Networking
 echo "micro-os" > /etc/hostname
+mkdir -p /etc/network
 cat << 'NET' > /etc/network/interfaces
 auto lo
 iface lo inet loopback
