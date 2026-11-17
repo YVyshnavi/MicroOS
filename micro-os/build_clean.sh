@@ -68,12 +68,19 @@ nameserver 8.8.8.8
 nameserver 1.1.1.1
 DNS
 
+# Remove any stale dpkg lock files from interrupted runs
+rm -f "${CHROOT_DIR}/var/lib/dpkg/lock"* "${CHROOT_DIR}/var/cache/apt/archives/lock" 2>/dev/null || true
+
 echo "================================================================="
 echo "==> [4/7] Installing packages and configuring Windows 11-style GUI..."
 echo "================================================================="
 cat << 'EOF' | chroot "${CHROOT_DIR}" /bin/bash
 set -e
 export DEBIAN_FRONTEND=noninteractive
+
+# Clean any lock remnants and finish any pending dpkg configuration
+rm -f /var/lib/dpkg/lock* /var/cache/apt/archives/lock 2>/dev/null || true
+dpkg --configure -a 2>/dev/null || true
 
 # Force IPv4 to prevent WSL DNS timeout issues and increase retries
 mkdir -p /etc/apt/apt.conf.d /var/cache/apt/archives/partial
