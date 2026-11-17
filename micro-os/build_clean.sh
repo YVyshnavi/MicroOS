@@ -21,6 +21,16 @@ SRC_DIR="$(pwd)"
 mkdir -p "${OUTPUT_DIR}"
 
 echo "================================================================="
+echo "==> [0/7] Checking and installing host build tools..."
+echo "================================================================="
+for pkg in debootstrap squashfs-tools xorriso isolinux syslinux-common; do
+    if ! command -v "$pkg" >/dev/null 2>&1 && ! dpkg -s "$pkg" >/dev/null 2>&1; then
+        echo "Installing missing host package: $pkg..."
+        apt-get update -qq && apt-get install -y --no-install-recommends "$pkg"
+    fi
+done
+
+echo "================================================================="
 echo "==> [1/7] Cleaning previous workspaces..."
 echo "================================================================="
 for m in dev/pts dev proc sys run; do
