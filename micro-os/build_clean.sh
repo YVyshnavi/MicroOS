@@ -107,7 +107,8 @@ deb http://security.debian.org/debian-security bookworm-security main contrib no
 REPO
 apt-get update
 
-# Core Kernel, Live-Boot & Lightweight Desktop Packages (with retry resilience)
+# Step 4A: Install Core Kernel, Live-Boot & Base System Packages
+echo "--> [4A/7] Installing base system & kernel packages..."
 apt-get install -y --fix-missing --no-install-recommends \
     linux-image-amd64 \
     live-boot \
@@ -118,7 +119,11 @@ apt-get install -y --fix-missing --no-install-recommends \
     curl \
     nano \
     htop \
-    python3 \
+    python3
+
+# Step 4B: Install Lightweight GUI & Retro Arcade Suite
+echo "--> [4B/7] Installing XFCE4 desktop, LightDM & arcade suite..."
+apt-get install -y --fix-missing --no-install-recommends \
     xorg \
     xserver-xorg-video-all \
     lightdm \
@@ -128,8 +133,7 @@ apt-get install -y --fix-missing --no-install-recommends \
     xfce4-whiskermenu-plugin \
     thunar \
     nsnake \
-    bsdgames \
-    build-essential
+    bsdgames
 
 # Configure Non-Root User & Sudo (user:user, root:root)
 id -u user &>/dev/null || useradd -m -s /bin/bash -G sudo,audio,video user
@@ -219,21 +223,27 @@ echo "================================================================="
 echo "==> Installing Research Lab suite into target filesystem..."
 echo "================================================================="
 # Copy Python simulator script
-cp "${SRC_DIR}/micro-os/research-lab/sched_sim.py" "${CHROOT_DIR}/usr/local/bin/sched_sim.py"
-chmod 0755 "${CHROOT_DIR}/usr/local/bin/sched_sim.py"
+if [ -f "${SRC_DIR}/research-lab/sched_sim.py" ]; then
+    cp "${SRC_DIR}/research-lab/sched_sim.py" "${CHROOT_DIR}/usr/local/bin/sched_sim.py"
+elif [ -f "${SRC_DIR}/micro-os/research-lab/sched_sim.py" ]; then
+    cp "${SRC_DIR}/micro-os/research-lab/sched_sim.py" "${CHROOT_DIR}/usr/local/bin/sched_sim.py"
+fi
+chmod 0755 "${CHROOT_DIR}/usr/local/bin/sched_sim.py" 2>/dev/null || true
 
-# Copy or compile native research-lab binary
-if [ -f "${SRC_DIR}/micro-os/research-lab/target/release/research-lab" ]; then
+# Copy native research-lab binary or setup launcher
+if [ -f "${SRC_DIR}/research-lab/target/release/research-lab" ]; then
+    cp "${SRC_DIR}/research-lab/target/release/research-lab" "${CHROOT_DIR}/usr/local/bin/research-lab"
+elif [ -f "${SRC_DIR}/micro-os/research-lab/target/release/research-lab" ]; then
     cp "${SRC_DIR}/micro-os/research-lab/target/release/research-lab" "${CHROOT_DIR}/usr/local/bin/research-lab"
 else
-    # Fallback shell runner if prebuilt Linux binary not present
+    # Fallback runner invoking the Python simulator
     cat << 'RUNNER' > "${CHROOT_DIR}/usr/local/bin/research-lab"
 #!/usr/bin/env bash
 python3 /usr/local/bin/sched_sim.py
 read -p "Press Enter to exit..."
 RUNNER
 fi
-chmod 0755 "${CHROOT_DIR}/usr/local/bin/research-lab"
+chmod 0755 "${CHROOT_DIR}/usr/local/bin/research-lab" 2>/dev/null || true
 
 echo "================================================================="
 echo "==> [5/7] Preparing static device nodes & unmounting chroot..."
